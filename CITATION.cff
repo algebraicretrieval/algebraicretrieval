@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite Algebraic Retrieval."
+type: software
+title: "Algebraic Retrieval: Composable Retrieval over Masks and Weights"
+authors:
+  - family-names: "Delmas"
+    given-names: "Damian"
+repository-code: "https://github.com/algebraicretrieval/algebraicretrieval"
+url: "https://github.com/algebraicretrieval/algebraicretrieval"
+keywords:
+  - information retrieval
+  - retrieval algebra
+  - query compilation
+  - SQLite
+  - PyTerrier
