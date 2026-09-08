@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite Algebraic Retrieval."
 type: software
-title: "Algebraic Retrieval: Composable Retrieval over Masks and Weights"
+title: "Algebraic Retrieval: Composable Search for Agents"
 authors:
   - family-names: "Delmas"
     given-names: "Damian"

@@ -1,4 +1,4 @@
-# Algebraic Retrieval
+# Algebraic Retrieval: Composable Search for Agents
 
 **Agents can compose retrieval programs at query time.**
 
