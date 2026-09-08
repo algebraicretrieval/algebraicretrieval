@@ -2,7 +2,7 @@
 
 **Agents can compose retrieval programs at query time.**
 
-**[Read the v1 paper (PDF)](paper/algebraic-retrieval.pdf)** · **[Reproduce the examples](proofs/pyterrier#paper-examples-and-rounding-check)**
+**[Read the v1 paper (PDF)](paper/algebraic-retrieval.pdf)** · [LaTeX source](paper/algebraic-retrieval.tex) · **[Reproduce the examples](proofs/pyterrier#paper-examples-and-rounding-check)**
 
 The agent inspects the available data and operations, then builds a retrieval program: combine searches, choose candidates, rerank results, or follow related records. The runtime executes it and returns a relation the agent can inspect and use in another query.
 
@@ -225,8 +225,10 @@ The paper's three full SQL/native PyTerrier comparisons and the floating-point t
 module/algebra/      flex external module — parser, IR, planner, backends, materializer
 proofs/pyterrier/    bounded comparison runner and machine-readable receipt
 tests/                portable surface, contract, transport, and dimension regressions
-paper/                v1 preprint PDF
+paper/                v1 preprint PDF, LaTeX source, and vector figure
 ```
+
+To build the paper, run `xelatex -interaction=nonstopmode -halt-on-error algebraic-retrieval.tex` twice from `paper/` with TeX Live installed. The figure is included as a PDF; its standalone TikZ source and SVG are in [`paper/figures/`](paper/figures/).
 
 ## Run the portable regressions
 
