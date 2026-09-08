@@ -39,9 +39,9 @@ The program denotes a scored relation. Masks restrict its support through `▷`;
 
 Precedence is `@`, then scalar `*` / weight `⊙` / mask conjunction `&`, then restriction `▷`, then `+` / `-` / fusion `⊕`. Examples use canonical parentheses. `&` intersects declared mask support. Mask union is simply outside the current implemented/proven surface; complement and negation additionally require a closed universe and could synthesize support the contract never declared.
 
-Numerically, `E` has L2-normalized float32 rows and primitive query vectors are normalized individually. `E @ q` is raw float32 inner product. A unit primitive is therefore cosine-equivalent, while a signed composition retains its magnitude so linear collapse preserves scores and absolute thresholds. Score comparisons use an absolute tolerance of `1e-6`; ranking uses `score DESC, id ASC`.
+Numerically, `E` has L2-normalized float32 rows and primitive query vectors are normalized individually. `E @ q` is raw float32 inner product. A unit primitive is therefore cosine-equivalent, while a signed composition retains its magnitude and preserves the defined linear score function. Float32 evaluation orders can differ by rounding; the proof cases compare scores with absolute tolerance `1e-6` and check ranks and threshold membership directly. Ranking uses `score DESC, id ASC`.
 
-A four-row regression proves that replacing excluded identities with score zero can make them outrank eligible negative scores. A separate three-vector regression proves that pushing restriction through centroid feedback reverses the result order, so the compiler preserves feedback as a barrier.
+A four-row compiler regression exercises support restriction, signed scoring, weights, and an exact tie at the selection boundary. It retains an eligible negative score that an incorrectly zero-filled exclusion would outrank. A separate three-vector regression proves that pushing restriction through centroid feedback reverses the result order, so the compiler preserves feedback as a barrier.
 
 ### Orient
 
@@ -86,7 +86,7 @@ m = type(assistant)
 )
 ```
 
-A negative composition is not monotone in either input ranking, so over-fetching candidates from `target` and reranking them is not exact. Collapse produces one query vector that an inner-product ANN device could search directly. A cosine ANN device preserves the order after normalizing that vector, but absolute thresholds must be rescaled by its norm. This repository proves exact scoring semantics; it does not yet integrate an ANN execution device.
+With a positive suppression coefficient, the composed score increases with the target score and decreases with the suppression score, so a fixed proper prefix of the descending target ranking alone gives no general exactness guarantee. Collapse produces one query vector that an inner-product ANN device could search directly. For a nonzero composed vector, cosine normalization preserves the exact linear-score order, but recovering raw scores requires rescaling by its norm. These identities do not guarantee ANN recall; this repository does not yet integrate an ANN execution device.
 
 Rerank a contract-declared first-pass support relation with vector scoring:
 
@@ -178,6 +178,22 @@ ORDER BY min(a.score, b.score) DESC;
 
 SQL is therefore an execution and composition host, not the primary notation for retrieval programs.
 
+## Four-row compiler witness
+
+The fixture in [`tests/test_contract.py`](tests/test_contract.py) executes:
+
+```text
+τ₂(w ⊙ (m ▷ ((E @ q1) - 0.5·(E @ q2))))
+```
+
+It uses four keyed vectors, two unit queries, mask `{a,c,d}`, and weights for all four identities. The existing contract loader, mathematical parser, and planner return `[(a,0.25),(c,-0.125)]`. The regression checks scores as well as identities, retention of all three admitted rows when `k=4`, and the exact `c,d` cutoff tie after reversing matrix/identity order and independently changing mask/weight insertion order. The scorer processes three admitted rows.
+
+```bash
+python -m unittest discover -s tests -p test_contract.py -v
+```
+
+This is a portable compiler regression with literal expected values, separate from the six-case FAISS/Vaswani receipt below.
+
 ## Independent score-device validation
 
 The Vaswani receipt compares Algebra's NumPy reference scorer with FAISS 1.15.0 `IndexFlatIP` over the same 11,429 identities and deterministic 128-dimensional signed-hash vectors. For linear composition, the oracle performs two separate FAISS searches and combines their aligned scores; PyTerrier constructs the relation and applies cutoff/top-k.
@@ -191,7 +207,9 @@ The Vaswani receipt compares Algebra's NumPy reference scorer with FAISS 1.15.0 
 | `τ₅₀₀(threshold(0.20, (E @ q1) - 0.5·(E @ q2)))` | 13 rows; delta `2.98e-8` |
 | `τ₁₀(m ▷ (w ⊙ (E @ q1)))` | 0 differences; delta `0.0` |
 
-No case has a rank/identity difference or a score difference above `1e-6`. Normalized-composition, missing-tie-break, and zero-filled-mask mutations are all detected. See [`proofs/pyterrier`](proofs/pyterrier) for the exact contract, mutation results, and receipt boundaries.
+No case has a rank/identity difference or a reported score difference above `1e-6`. The receipt also distinguishes deliberately wrong numerical and semantic alternatives; its mask/tie checks are not injected compiler mutations. The weight case establishes agreement on the shared 52-id restricted support, not general enforcement of weight totality. See [`proofs/pyterrier`](proofs/pyterrier) for the exact contract, alternative calculations, and receipt boundaries.
+
+The paper's three full SQL/native PyTerrier comparisons and the floating-point tie analysis are executable in [`proofs/pyterrier/examples.py`](proofs/pyterrier/examples.py). Unlike the six-case receipt above, this comparison reports a sqlite-vec ordering difference for two documents whose Algebra and PyTerrier scores tie exactly. The proof directory includes the commands and dependencies.
 
 ## Repository layout
 

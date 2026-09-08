@@ -223,12 +223,7 @@ def _mutation_checks(ids, faiss_index, queries, correct_linear_cutoff):
     }
 
 
-def main():
-    if not VASWANI.exists():
-        raise FileNotFoundError(
-            f"missing fixture: {VASWANI}; set VASWANI_DB to the Vaswani SQLite fixture"
-        )
-    db = sqlite3.connect(f"file:{VASWANI}?mode=ro", uri=True)
+def _contract():
     mapping = {
         "R": {"kind": "relation", "relation": "documents", "key": "docno", "columns": ["text"]},
         "E": {"kind": "matrix", "relation": "embeddings", "key": "docno", "columns": ["vector"]},
@@ -237,7 +232,16 @@ def main():
         "m": {"kind": "mask", "relation": "pyterrier_bm25_results", "key": "docno", "selector": {"qid": "1"}, "expression": 'mask("m")'},
         "w": {"kind": "weight", "relation": "pyterrier_bm25_results", "key": "docno", "columns": ["score"], "selector": {"qid": "1"}, "normalize": "max", "expression": 'weight("w")'},
     }
-    contract = Contract.from_mapping(mapping)
+    return Contract.from_mapping(mapping)
+
+
+def main():
+    if not VASWANI.exists():
+        raise FileNotFoundError(
+            f"missing fixture: {VASWANI}; set VASWANI_DB to the Vaswani SQLite fixture"
+        )
+    db = sqlite3.connect(f"file:{VASWANI}?mode=ro", uri=True)
+    contract = _contract()
     ids, matrix, queries = _fixture(db)
     surface = _math_surface()
 
