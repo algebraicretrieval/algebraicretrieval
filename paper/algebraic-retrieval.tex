@@ -67,7 +67,7 @@ Algebraic Retrieval lets AI agents compose search strategies at query time. Rele
 
 Retrieval is often presented to an agent as one search call with a query and a few parameters. An agent seeking implementation architecture may also want to suppress marketing material, restrict candidates to engineering discussions, and weight scores by recency. These choices can be written together as one expression.
 
-Algebraic Retrieval lets the agent compose that expression at query time: choose scoring directions, eligible records, and per-record weights. It can revise the program after inspecting results, using named inputs instead of reconstructing their SQL joins or Python setup.
+Algebraic Retrieval lets the agent compose that expression at query time. It chooses scoring directions, eligible records, and per-record weights, then can revise the expression after inspecting results.
 
 Programmatic Embedding Modulation (PEM) {[}5{]} exposes vectors and scores for arithmetic at query time. Algebraic Retrieval gives that surface a mathematical query notation. We compare three programs with SQL and PyTerrier {[}3{]}, a Python library for composing retrieval pipelines.
 
