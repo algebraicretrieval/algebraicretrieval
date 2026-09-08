@@ -32,10 +32,11 @@ FROM embeddings AS e JOIN m ON m.id = e.docno
 ORDER BY score DESC, id ASC
 LIMIT 10;""",
     ),
-    "mask_weight_composition": (
-        "τ₁₀(w ⊙ (m ▷ (E @ q1)))",
+    "full_composition": (
+        "τ₁₀(w ⊙ (m ▷ ((E @ q1) - 0.5 * (E @ q2))))",
         """SELECT e.docno AS id,
-       w.weight * (1 - vec_distance_cosine(e.vector, :q1)) AS score
+       w.weight * ((1 - vec_distance_cosine(e.vector, :q1))
+                   - 0.5 * (1 - vec_distance_cosine(e.vector, :q2))) AS score
 FROM embeddings AS e
 JOIN m ON m.id = e.docno JOIN w ON w.id = e.docno
 ORDER BY score DESC, id ASC
@@ -124,7 +125,8 @@ FROM pyterrier_bm25_results WHERE qid='1';""")
     W = pt.apply.doc_score(lambda r: r["score"] * weight[r["docno"]])
     T = pt.apply.generic(score_id_order)
     pipelines = [(D >> (A + (-0.5) * B) >> T) % 10,
-                 (M >> A >> T) % 10, (M >> A >> W >> T) % 10]
+                 (M >> A >> T) % 10,
+                 (M >> (A + (-0.5) * B) >> W >> T) % 10]
     topics = pd.read_sql_query("SELECT qid,query FROM query_vectors WHERE qid='1'", db)
     report = {
         "versions": {"numpy": np.__version__, "pandas": pd.__version__,
@@ -181,6 +183,7 @@ FROM pyterrier_bm25_results WHERE qid='1';""")
         and all(c[k]["same_document_set"] and c[k]["max_common_score_delta"] <= proof.SCORE_ATOL
                 for c in report["cases"].values() for k in ("sql_comparison", "pyterrier_comparison"))
         and all(c["pyterrier_comparison"]["same_order"] for c in report["cases"].values())
+        and report["cases"]["full_composition"]["sql_comparison"]["same_order"]
     )
     return report
 

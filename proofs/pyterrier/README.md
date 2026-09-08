@@ -63,7 +63,7 @@ The fixture builder downloads `ir_datasets:vaswani`, creates the FTS5 corpus, co
 
 ### Paper examples and rounding check
 
-[`examples.py`](examples.py) runs the paper's three Algebra expressions, complete sqlite-vec SQL queries, and native PyTerrier pipelines. It also compares folded and two-pass NumPy scoring, reproduces sqlite-vec 0.1.9's scalar cosine accumulation and distance rounding for documents `7429` and `9217`, and checks that all 52 BM25 weights agree across the three paths.
+[`examples.py`](examples.py) runs the paper's three Algebra expressions, complete sqlite-vec SQL queries, and native PyTerrier pipelines. The third program combines signed scoring, candidate restriction, and weighting in one expression. The runner also compares folded and two-pass NumPy scoring, reproduces sqlite-vec 0.1.9's scalar cosine accumulation and distance rounding for documents `7429` and `9217`, and checks that all 52 BM25 weights agree across the three paths.
 
 After the fixture and dependencies above are available:
 
