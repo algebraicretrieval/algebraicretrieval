@@ -1,22 +1,30 @@
 # Algebraic Retrieval
 
-**Composable retrieval over masks and weights.**
+**Agents can compose retrieval programs at query time.**
+
+**[Read the v1 paper (PDF)](paper/algebraic-retrieval.pdf)** · **[Reproduce the examples](proofs/pyterrier#paper-examples-and-rounding-check)**
+
+The agent inspects the available data and operations, then builds a retrieval program: combine searches, choose candidates, rerank results, or follow related records. The runtime executes it and returns a relation the agent can inspect and use in another query.
 
 $$
-\tau_k \left(m \triangleright \left(w \odot (E @ q)\right)\right)
+\tau_k \left(w \odot \left(m \triangleright (E @ q)\right)\right)
 $$
 
-Equivalent ASCII source is accepted directly:
+Equivalent ASCII source:
 
 ```text
-top(10, restrict(m, modulate(w, E @ q)))
+top(10, modulate(w, restrict(m, E @ q)))
 ```
 
-We present an agent-written mathematical retrieval language whose typed expressions form an IR in which relations, query vectors, masks, weights, and scored relations compose as retrieval programs. These programs are mechanically lowered through an existing SQL/NumPy runtime. Six bounded cases compare the Algebra scorer with independent exact FAISS inner-product results shaped into relations by PyTerrier.
+The paper shows three short programs in Algebra, equivalent SQL, and native PyTerrier. The comparisons check scores and ordering on the same 11,429-document Vaswani fixture.
 
-The implementation is an experimental external module for [flex](https://github.com/damiandelmas/flex). It reuses the existing IR, planner, execution backends, and SQLite materializer path rather than introducing another retrieval framework.
+The implementation is an experimental external module for [flex](https://github.com/damiandelmas/flex). Its parser and planner work with the existing SQL/NumPy materializer to execute the program and return SQLite results.
 
-This repository is a public software snapshot accompanying the paper **“Algebraic Retrieval: Composable Retrieval over Masks and Weights”** (in preparation).
+After [installing the dependencies and building the fixture](proofs/pyterrier#reproduce), run all three comparisons and the rounding check:
+
+```bash
+FLEX_SOURCE_ROOT=/path/to/flex python proofs/pyterrier/examples.py
+```
 
 ## Lineage
 
@@ -217,6 +225,7 @@ The paper's three full SQL/native PyTerrier comparisons and the floating-point t
 module/algebra/      flex external module — parser, IR, planner, backends, materializer
 proofs/pyterrier/    bounded comparison runner and machine-readable receipt
 tests/                portable surface, contract, transport, and dimension regressions
+paper/                v1 preprint PDF
 ```
 
 ## Run the portable regressions
@@ -238,7 +247,7 @@ For large vector cells, use the persistent flex MCP service so its vector cache 
 
 ## Citation
 
-Citation metadata is in [`CITATION.cff`](CITATION.cff). A version DOI will be attached when the first release is archived through Zenodo; the paper citation will become the preferred citation when the manuscript is public.
+Citation metadata is in [`CITATION.cff`](CITATION.cff). A version DOI will be attached when the first release is archived through Zenodo.
 
 ## Author
 
