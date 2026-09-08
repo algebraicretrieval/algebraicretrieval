@@ -30,7 +30,7 @@ FLEX_SOURCE_ROOT=/path/to/flex python proofs/pyterrier/examples.py
 
 Algebraic Retrieval builds directly on [*flexvec: SQL Vector Retrieval with Programmatic Embedding Modulation*](https://arxiv.org/abs/2603.22587) (Delmas, 2026). flexvec introduced Programmatic Embedding Modulation (PEM), exposing the embedding matrix and score array as programmable surfaces and integrating query and score transformations into SQL through a query materializer.
 
-Algebraic Retrieval moves that model into the query representation itself: relations, query vectors, masks, weights, and scored relations become typed operands in an agent-written mathematical language that lowers through the existing SQL/NumPy runtime. PEM is the immediate execution precursor and one operator family within the broader algebra.
+PEM already combines vector and score operations with SQL filtering. Algebraic Retrieval makes those operations explicit in the query representation: relations, query vectors, masks, weights, and scored relations become typed operands an agent composes in one program. The program executes through a SQL/NumPy materializer.
 
 ## Agent interface
 

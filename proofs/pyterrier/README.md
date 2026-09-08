@@ -48,10 +48,11 @@ The normalization alternative is executed through FAISS; the tie check compares 
 
 ## Reproduce
 
-The runner expects a flex source checkout or installation plus NumPy, pandas, FAISS CPU 1.15.0, PyTerrier 1.1.2, and `ir_datasets`.
+The runner expects a [flex source checkout](https://github.com/damiandelmas/flex) or installation plus the Python packages below. The fixture builder also requires Java; the fresh-clone check used OpenJDK 21 and Python 3.11.
 
 ```bash
-python -m pip install 'pyterrier[java]==1.1.2' 'faiss-cpu==1.15.0' ir-datasets numpy pandas
+python -m pip install 'pyterrier[java]==1.1.2' 'faiss-cpu==1.15.0' \
+  'numpy==2.4.6' 'pandas==3.0.5' 'ir-datasets==0.6.3'
 python proofs/pyterrier/build_fixture.py
 
 FLEX_SOURCE_ROOT=/path/to/flex \
@@ -67,7 +68,7 @@ The fixture builder downloads `ir_datasets:vaswani`, creates the FTS5 corpus, co
 After the fixture and dependencies above are available:
 
 ```bash
-python -m pip install 'sqlite-vec==0.1.9' 'numpy==2.4.6' 'pandas==3.0.5'
+python -m pip install 'sqlite-vec==0.1.9'
 FLEX_SOURCE_ROOT=/path/to/flex python proofs/pyterrier/examples.py
 ```
 
