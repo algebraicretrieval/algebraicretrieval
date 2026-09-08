@@ -55,11 +55,11 @@ Independent Researcher, Vancouver, BC \\
 \texttt{damian@getflex.dev}}
 \date{}
 \raggedbottom
-\setlength{\parskip}{3pt}
+\setlength{\parskip}{2pt}
 \begin{document}
 \maketitle
 \begin{abstract}
-Algebraic Retrieval lets AI agents compose search strategies at query time. Relevance criteria, eligibility constraints, and ranking preferences can be expressed together in a mathematical query. The agent can discover available operations, combine them for the question at hand, and revise its strategy after inspecting the results. This gives the agent control over both what it searches for and how it searches. Building on Programmatic Embedding Modulation (PEM), which exposes vector and score arithmetic during retrieval, we demonstrate contrastive scoring, candidate-pool reranking, and weighted ranking as composable queries, alongside executable SQL and PyTerrier counterparts. On the public 11,429-document Vaswani fixture, each program's implementations select the same document set with score differences below \texttt{1e-6}; one tied pair orders differently across scoring paths.
+Algebraic Retrieval lets AI agents compose search strategies at query time. Relevance criteria, eligibility constraints, and ranking preferences can be expressed together in a mathematical query. The query surface exposes available operations, so an agent can combine them for the question at hand and revise a program after inspecting results. We evaluate execution parity, not agent behavior or retrieval quality. Building on Programmatic Embedding Modulation (PEM), which exposes vector and score arithmetic during retrieval, we demonstrate contrastive scoring, candidate-pool reranking, and weighted ranking as composable queries, alongside executable SQL and PyTerrier counterparts. On the public 11,429-document Vaswani fixture, each program's implementations select the same document set with score differences below \texttt{1e-6}; one tied pair orders differently across scoring paths.
 \end{abstract}
 
 \hypertarget{introduction}{%
@@ -76,16 +76,16 @@ Programmatic Embedding Modulation (PEM) {[}5{]} exposes vectors and scores for a
 
 An embedding represents a record or query as a vector of numbers in a shared space. Let \(E\) hold one record vector per row and \(q\) be a query vector. Matrix multiplication \(E\matmul q\) produces one score per record. With unit-length record and query vectors, these scores equal cosine similarity. The scores and their record identities form a scored relation \(S\).
 
-PEM {[}5{]} exposes the embedding matrix and score array for arithmetic before selection. A caller can change the query vector before scoring, or add, subtract, and weight scores afterward. SQL filters choose the participating records. Algebraic Retrieval gives these operations a mathematical query notation.
+PEM {[}5{]} exposes the embedding matrix and score array for arithmetic before selection. A caller can change the query vector before scoring, or add, subtract, and weight scores afterward. SQL filters choose the participating records. Algebraic Retrieval gives these operations a mathematical query notation. Its contract uses normalized stored and primitive query vectors but leaves composed queries unnormalized.
 
 For query vectors in the same embedding space, \(+\) and \(-\) combine their scores, and scalar \texttt{*} scales a contribution. For example, \((E\matmul q_1)-0.5\,(E\matmul q_2)\) favors the first direction while suppressing the second. Selection happens after composition; subtracting two already-truncated top-ten lists would be a different operation. In displayed formulas, \(q_1\) and \(q_2\) denote the source tokens \texttt{q1} and \texttt{q2}.
 
-A mask \(m\) is a set of eligible identities. \(m\triangleright S\) removes other records from a scored relation \(S\). A weight relation \(w\) supplies a scalar for each eligible identity, and \(w\odot S\) multiplies its score. Masks remove records; a zero weight leaves a record present with score zero. Finally, \(\tau_{10}(S)\) selects up to ten results, ordered by score descending and identity ascending. The ASCII spelling is \texttt{top(10,\ S)}.
+A mask \(m\) is a set of eligible identities. \(m\triangleright S\) removes other records from a scored relation \(S\). A weight relation \(w\) supplies a scalar for each eligible identity, and \(w\odot S\) multiplies its score. Here \(w\) covers every eligible identity; a missing weight is represented as zero. Masks remove records; a zero weight leaves a record present with score zero. Finally, \(\tau_{10}(S)\) selects up to ten results, ordered by score descending and identity ascending. The ASCII spelling is \texttt{top(10,\ S)}.
 
 \hypertarget{architecture}{%
 \section{Architecture}\label{architecture}}
 
-The runtime uses a materializer: code that executes retrieval operations and stores the results in a temporary SQL table. SQLite resolves the operands, the named inputs to the expression, and NumPy performs vector arithmetic. The parser reads the expression; the planner chooses its execution steps.
+The runtime uses a materializer: code that executes retrieval operations and stores the results in a temporary SQL table. It resolves named operands through SQLite, while NumPy performs vector arithmetic. The parser reads the expression; the planner chooses its execution steps.
 
 \begin{figure}[!ht]
 \centering
@@ -103,7 +103,7 @@ Because the query vectors remain explicit in the expression, the planner can com
   = E\matmul(q_1-0.5q_2).
 \]
 
-The rewrite preserves vector magnitude and uses one matrix multiplication. It is exact in real arithmetic; 32-bit floating-point (\texttt{float32}) rounding can cause small differences.
+The rewrite preserves the mathematical (unnormalized) scores and uses one matrix multiplication. It is exact in real arithmetic; 32-bit floating-point (\texttt{float32}) rounding can cause small differences.
 
 For a fixed \(E\), changing \(q\) leaves the scored identities intact. A mask changes which records participate, while per-record weighting generally cannot be absorbed into a change of \(q\).
 
@@ -118,7 +118,7 @@ Before writing a query, the agent calls:
 algebra('orient')
 \end{lstlisting}
 
-The response lists available operands, their source relations, and whether they are usable. These six rows come from the Vaswani example:
+The response lists available operands, their source relations, and whether they are usable. For this comparison, the proof runner supplies the following fixture-specific bindings; a live contract-backed cell returns the same kind of rows:
 
 \begin{longtable}[]{@{}llll@{}}
 \toprule\noalign{}
@@ -135,16 +135,16 @@ mask & \texttt{m} & \texttt{pyterrier\_bm25\_results(docno,\ qid)} & \texttt{ok}
 weight & \texttt{w} & \texttt{pyterrier\_bm25\_results(docno,\ score,\ qid)} & \texttt{ok} \\
 \end{longtable}
 
-The response also lists the supported operators. Whoever integrates the corpus declares how each symbol maps to data; the example runner declares the bindings used here. The agent composes expressions over those named inputs.
+The live response also advertises the operators used below. Whoever integrates the corpus declares how each symbol maps to data; the example runner declares the bindings used here. The agent composes expressions over those named inputs.
 
-The examples use the 11,429-document Vaswani collection, with deterministic 128-dimensional vectors. \texttt{q1} is the stored query vector for “What are chemical reactions?”; \texttt{q2} is a fixed vector from document \texttt{2008}. BM25 ranks documents by query-term matches; the mask contains the 52 candidates in its recorded PyTerrier result for that query. Each weight is its BM25 score divided by the maximum score in that result. The vectors make the computation reproducible; they are not a learned-embedding retrieval evaluation.
+The examples use the 11,429-document \texttt{ir\_datasets:vaswani} collection {[}4{]}, with deterministic 128-dimensional signed-hash vectors and normalized stored rows. \texttt{q1} is the stored query vector for “What are chemical reactions?”; \texttt{q2} is a fixed vector from document \texttt{2008}. BM25 ranks documents by query-term matches; the mask contains the 52 candidates in its recorded PyTerrier result for that query. Each weight is its BM25 score divided by the maximum score in that result. The vectors make the computation reproducible; they are not a learned-embedding retrieval evaluation.
 
 \newpage
 
 \hypertarget{queries-the-agent-can-compose}{%
 \section{Queries the agent can compose}\label{queries-the-agent-can-compose}}
 
-The examples introduce signed scoring and candidate restriction, then combine both with per-record weights. In PyTerrier, \texttt{>>} passes results to the next stage and \texttt{\% 10} keeps the top ten. \texttt{D} supplies every document, \texttt{M} supplies the recorded BM25 candidates, \texttt{A} and \texttt{B} score with the two query vectors, and \texttt{W} applies the declared weights. \texttt{T} orders by score and document identity before cutoff. Their definitions appear at the end of the paper. Reported score differences are relative to Algebra.
+The examples introduce contrastive (signed) scoring and candidate restriction, then combine both with per-record weights. In PyTerrier, \texttt{>>} passes results to the next stage and \texttt{\% 10} keeps the top ten. \texttt{D} supplies every document, \texttt{M} supplies the recorded BM25 candidates, \texttt{A} and \texttt{B} score with the two query vectors, and \texttt{W} applies the declared weights. \texttt{T} orders by score and document identity before cutoff. Their definitions appear at the end of the paper. Reported score differences are relative to Algebra.
 
 \hypertarget{subtract-one-similarity-search-from-another}{%
 \subsection{Subtract one similarity search from another}\label{subtract-one-similarity-search-from-another}}
@@ -174,7 +174,7 @@ LIMIT 10;
 (D >> (A + (-0.5) * B) >> T) % 10
 \end{lstlisting}
 
-PyTerrier adds the first scorer to a negatively weighted second scorer. The SQL alternative calculates two cosine similarities per row; Algebra combines the vectors and scores once. All select the same ten identities, with document \texttt{9448} first. PyTerrier returns the same order, with a maximum score difference of \texttt{2.24e-8}. Documents \texttt{7429} and \texttt{9217} tie exactly in Algebra and PyTerrier, where identity ordering places \texttt{7429} first. The SQL path separates them by approximately \texttt{5.96e-8} and places \texttt{9217} first; its maximum returned-score difference is also approximately \texttt{5.96e-8}.
+PyTerrier adds the first scorer to a negatively weighted second scorer. The SQL alternative calculates two cosine similarities per row; Algebra combines the vectors and scores once. All select the same ten-document set, with document \texttt{9448} first. PyTerrier returns the same order, with a maximum score difference of \texttt{2.24e-8}. Documents \texttt{7429} and \texttt{9217} tie exactly in Algebra and PyTerrier, where identity ordering places \texttt{7429} first. The SQL path separates them by approximately \texttt{5.96e-8} and places \texttt{9217} first; its maximum returned-score difference is also approximately \texttt{5.96e-8}.
 
 Replacing subtraction with addition blends the two scoring directions.
 
@@ -250,13 +250,13 @@ The third program composes the choices introduced earlier: combine scoring direc
 
 The composition works because intermediate scores remain paired with identities. Arithmetic changes scores, masks determine which records participate, and top-k selects the final result.
 
-The PyTerrier 1.1.2 programs use scores independently computed by FAISS 1.15.0 \texttt{IndexFlatIP}, an exact inner-product scorer. The SQL alternatives use sqlite-vec 0.1.9. All document sets match Algebra and score differences are below \texttt{1e-6}; §5.1 reports the ordering difference. These checks use the recorded upstream BM25 pool and do not compare timing or BM25 implementations.
+The PyTerrier 1.1.2 programs use scores independently computed by FAISS 1.15.0 \texttt{IndexFlatIP}, an exact inner-product scorer. The SQL alternatives use sqlite-vec 0.1.9. All document sets match Algebra and score differences are below \texttt{1e-6}; §5.1 reports the ordering difference. The masked cases use the recorded upstream BM25 pool; the unmasked contrastive case scores all 11,429 rows. These checks do not compare timing or BM25 implementations.
 
 Score tolerance does not imply rank agreement. Algebra and PyTerrier tie \texttt{7429} and \texttt{9217} at \texttt{0.24868088960647583}, a reference gap of zero; SQL favors \texttt{9217} by approximately \texttt{5.96e-8}. Identity ordering resolves only computed ties. If each alternative score differs from its reference by at most \(\varepsilon\), a reference gap greater than \(2\varepsilon\) preserves their order.
 
 SQL deviations of approximately \texttt{2.98e-8} also occur in §5.2, which uses a single query vector. A two-pass NumPy calculation of §5.1 preserves the tie, so the ordering difference does not require the rewrite. Stored float32 rows are approximately unit length; sqlite-vec 0.1.9 {[}10{]} recomputes vector lengths using float32 accumulation, then rounds cosine distance before SQL subtracts it from one. Reproducing those steps reproduces the pair's split: a deterministic rounding effect.
 
-The repository's \href{https://github.com/algebraicretrieval/algebraicretrieval/tree/main/proofs/pyterrier}{six-case validation} also checks score cutoffs, which retain records that meet a chosen minimum score. Further tests check \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_typed_operators.py}{restriction versus zero-weighting on negative scores} and \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_score_semantics.py}{tie ordering, the rewrite in §3, and score cutoffs}. A \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_barrier_semantics.py}{feedback test} selects the highest-scoring record, uses its vector as a new query, and scores again. Applying the mask before that selection changes the final ordering, so the planner must preserve where restriction occurs.
+The repository's \href{https://github.com/algebraicretrieval/algebraicretrieval/tree/main/proofs/pyterrier}{six-case validation} also checks score cutoffs, which retain records that meet a chosen minimum score. The \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_contract.py}{portable compiler witness} exercises support, signed scores, weights, and cutoff ties; companion tests check \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_typed_operators.py}{restriction versus zero-weighting on negative scores} and \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_score_semantics.py}{tie ordering, the rewrite in §3, and score cutoffs}. A \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/tests/test_barrier_semantics.py}{feedback test} selects the highest-scoring record, uses its vector as a new query, and scores again. Applying the mask before that selection changes the final ordering, so the planner must preserve where restriction occurs.
 
 PyTerrier composes retrieval stages, called transformers {[}3{]}, and supports \href{https://pyterrier.readthedocs.io/en/latest/transformer.html\#optimisation}{pipeline optimizations}. Here the agent writes one expression over discovered operands; the matrix and query vectors remain explicit for rewrites such as §3's. Earlier work develops vector scoring and query revision from example documents {[}1,2{]}, and top-k selection over database relations {[}6,7{]}. Vespa lets users define document-scoring expressions {[}8{]}; LOTUS uses language models to evaluate natural-language conditions on table rows {[}9{]}. The experiments do not measure retrieval-quality gains, approximate nearest-neighbor recall, comparative agent query-writing accuracy, or universal compiler correctness.
 
@@ -321,7 +321,7 @@ def score_id_order(frame):
 T = pt.apply.generic(score_id_order)
 \end{lstlisting}
 
-The explicit ordering stage supplies the comparison's tie policy. PyTerrier's default tied ranks follow input order. Code, fixture instructions {[}4{]}, and dependencies are available at \url{https://github.com/algebraicretrieval/algebraicretrieval/tree/main/proofs/pyterrier}. Its \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/proofs/pyterrier/examples.py}{\texttt{examples.py}} runs all three comparisons, the two-pass scoring check, and the scalar rounding reproduction:
+The explicit ordering stage supplies the comparison's tie policy. PyTerrier's default tied ranks follow input order. Code, fixture instructions {[}4{]}, and dependencies are available at \url{https://github.com/algebraicretrieval/algebraicretrieval/tree/main/proofs/pyterrier}. After building the fixture and installing the pinned dependencies described there, run the \href{https://github.com/algebraicretrieval/algebraicretrieval/blob/main/proofs/pyterrier/examples.py}{\texttt{examples.py}} comparison from the repository root:
 
 \begin{lstlisting}[language=bash]
 python proofs/pyterrier/examples.py
